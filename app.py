@@ -41,6 +41,3 @@ if uploaded_file is not None:
     prediction = predict_image(img_tensor, loaded_model)
     st.write("Prediction:", prediction)
 
-# To run the app:
-# 1. Save this code as app.py
-# 2. Run `streamlit run app.py` in your terminal
