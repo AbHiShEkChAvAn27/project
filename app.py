@@ -80,8 +80,9 @@ class CNN_NeuralNet(ImageClassificationBase):
         out = self.res2(out) + out                
         out = self.classifier(out)
         return out
+torch.serialization.add_safe_globals([CNN_NeuralNet])
 
-model = torch.load('/workspaces/project/DetectingPlantDiseases.pth', map_location=torch.device('cpu'), weights_only=True)
+model = torch.load('/workspaces/project/DetectingPlantDiseases2.pth', map_location=torch.device('cpu'))
 model.eval()
 
 device="cpu"
@@ -99,13 +100,25 @@ def preprocess_image(image):
     image = image.unsqueeze(0) 
     return image
 
-def predict_image(image, model):    
+def predict_image2(image, model):    
     image = preprocess_image(image)        
     xb = to_device(image, device)  
     with torch.no_grad():
         yb = model(xb)
         _, preds = torch.max(yb, dim=1)    
     return train.classes[preds.item()]
+
+def predict_image(image, model):    
+    image = preprocess_image(image)        
+    xb = to_device(image, device)  
+    with torch.no_grad():
+        yb = model(xb)
+        probs = F.softmax(yb, dim=1)  # Get probabilities
+        top_probs, top_classes = torch.topk(probs, k=2, dim=1)  # Get top 2 predictions
+    second_class = train.classes[top_classes.squeeze()[1].item()]  # Get the second class
+    return second_class
+
+
 
 st.title('Plant Disease Detection')
 uploaded_file = st.file_uploader("Choose an image...", type="jpg")
