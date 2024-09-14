@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 from PIL import Image
 import matplotlib.pyplot as plt
-from detecting-plant-diseases-pytorch import CNN_NeuralNet
+from pdp import CNN_NeuralNet
 
 
 # Load the saved model
