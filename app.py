@@ -3,8 +3,11 @@ import torch
 import torch.nn as nn
 from PIL import Image
 import matplotlib.pyplot as plt
+from detecting-plant-diseases-pytorch import CNN_NeuralNet
+
 
 # Load the saved model
+loaded_model=CNN_NeuralNet()
 loaded_model = torch.load("/workspaces/project/DetectingPlantDiseases.pth", map_location=torch.device('cpu'))
 
 # Function to predict image
