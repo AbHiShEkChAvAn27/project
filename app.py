@@ -7,14 +7,9 @@ import matplotlib.pyplot as plt
 loaded_model = torch.load("DetectingPlantDiseases.pth", map_location=torch.device('cpu'))
 
 # Function to predict image
-def predict_image(img, model):
-    """Converts image to array and return the predicted class
-        with highest probability"""
-    # Convert to a batch of 1
-    xb = img.unsqueeze(0)
-    # Get predictions from model
-    yb = model(xb)
-    # Pick index with highest probability
+def predict_image(img, model):        
+    xb = img.unsqueeze(0)    
+    yb = model(xb)    
     _, preds  = torch.max(yb, dim=1)
     # Retrieve the class label
     predicted_class = train.classes[preds[0].item()]
@@ -33,8 +28,6 @@ if uploaded_file is not None:
     st.write("")
     st.write("Classifying...")
 
-    # Preprocess the image
-    # (You might need to adjust preprocessing based on your model's requirements)
     from torchvision import transforms
     preprocess = transforms.Compose([
         transforms.Resize(256),
