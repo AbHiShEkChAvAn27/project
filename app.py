@@ -1,10 +1,11 @@
 import streamlit as st
 import torch
+import torch.nn as nn
 from PIL import Image
 import matplotlib.pyplot as plt
 
 # Load the saved model
-loaded_model = torch.load("DetectingPlantDiseases.pth", map_location=torch.device('cpu'))
+loaded_model = torch.load("/workspaces/project/DetectingPlantDiseases.pth", map_location=torch.device('cpu'))
 
 # Function to predict image
 def predict_image(img, model):        
