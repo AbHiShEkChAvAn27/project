@@ -3,7 +3,10 @@ import torch
 import torch.nn as nn
 from PIL import Image
 import matplotlib.pyplot as plt
+import sys
+sys.path.append('/workspaces/project/pdp.ipynb')
 from pdp import CNN_NeuralNet
+
 
 
 # Load the saved model
