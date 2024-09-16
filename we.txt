@@ -1,0 +1,27 @@
+import requests
+import geocoder
+
+def get_location():
+    g = geocoder.ip('me')  
+    return g.latlng  
+
+def get_weather(api_key):
+    lat, lon = get_location()  
+    url = f"https://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid={api_key}&units=metric"
+    
+    response = requests.get(url)
+    if response.status_code == 200:
+        weather_data = response.json()
+        return weather_data
+    else:
+        return None
+
+api_key = '9af0300668e7540757d4a871191f87b9'  
+weather = get_weather(api_key)
+
+if weather:
+    print(f"Location: {weather['name']}")
+    print(f"Temperature: {weather['main']['temp']}°C")
+    print(f"Weather: {weather['weather'][0]['description']}")
+else:
+    print("Failed to retrieve weather data.")

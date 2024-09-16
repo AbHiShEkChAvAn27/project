@@ -6,9 +6,12 @@ from torchvision import transforms
 import torch.nn.functional as F
 from torchvision.datasets import ImageFolder
 import torchvision.transforms as transforms 
+import requests
+import geocoder
 
-train_path="/workspaces/project/New Plant Diseases Dataset(Augmented)/New Plant Diseases Dataset(Augmented)/train"
-train = ImageFolder(train_path, transform = transforms.ToTensor() )
+# Plant Disease Detection Setup
+train_path = "/workspaces/project/New Plant Diseases Dataset(Augmented)/New Plant Diseases Dataset(Augmented)/train"
+train = ImageFolder(train_path, transform=transforms.ToTensor())
 
 def accuracy(outputs, labels):    
     _, preds = torch.max(outputs, dim=1)    
@@ -18,74 +21,74 @@ def accuracy(outputs, labels):
 
 class ImageClassificationBase(nn.Module):
     def training_step(self, batch):
-        images, labels = batch  # Unpack the batch
-        out = self(images)  # Generate predictions by passing images through the model
-        loss = F.cross_entropy(out, labels)  # Calculate cross-entropy loss
+        images, labels = batch
+        out = self(images)
+        loss = F.cross_entropy(out, labels)
         return loss
 
     def validation_step(self, batch):       
-        images, labels = batch  # Unpack the batch
-        out = self(images)  # Generate predictions
-        loss = F.cross_entropy(out, labels)  # Calculate cross-entropy loss
-        acc = accuracy(out, labels)  # Calculate accuracy using the accuracy function
+        images, labels = batch
+        out = self(images)
+        loss = F.cross_entropy(out, labels)
+        acc = accuracy(out, labels)
         return {'val_loss': loss.detach(), 'val_acc': acc}
 
     def validation_epoch_end(self, outputs):
-        batch_losses = [x['val_loss'] for x in outputs]  # Extract loss from each batch
-        epoch_loss = torch.stack(batch_losses).mean()  # Compute average loss over all batches
-        batch_accs = [x['val_acc'] for x in outputs]  # Extract accuracy from each batch
-        epoch_acc = torch.stack(batch_accs).mean()  # Compute average accuracy over all batches
+        batch_losses = [x['val_loss'] for x in outputs]
+        epoch_loss = torch.stack(batch_losses).mean()
+        batch_accs = [x['val_acc'] for x in outputs]
+        epoch_acc = torch.stack(batch_accs).mean()
         return {'val_loss': epoch_loss.item(), 'val_acc': epoch_acc.item()}
 
     def epoch_end(self, epoch, result):
-        print("Epoch [{}], train_loss: {:.4f}, val_loss: {:.4f}, val_acc: {:.4f}".format(
-            epoch, result['train_loss'], result['val_loss'], result['val_acc']))
+        print(f"Epoch [{epoch}], train_loss: {result['train_loss']:.4f}, "
+              f"val_loss: {result['val_loss']:.4f}, val_acc: {result['val_acc']:.4f}")
 
 def ConvBlock(in_channels, out_channels, pool=False):        
     layers = [
-        nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1),  # 3x3 Convolution with padding
-        nn.BatchNorm2d(out_channels),  # Batch Normalization to stabilize learning
-        nn.ReLU(inplace=True)  # ReLU Activation (in-place for memory efficiency)
-    ]    
+        nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1),
+        nn.BatchNorm2d(out_channels),
+        nn.ReLU(inplace=True)
+    ]
     if pool:
-        layers.append(nn.MaxPool2d(4))  # 4x4 Max Pooling to reduce spatial dimensions    
+        layers.append(nn.MaxPool2d(4))
     return nn.Sequential(*layers)
 
 class CNN_NeuralNet(ImageClassificationBase):
     def __init__(self, in_channels, num_diseases):
-        super().__init__()                
-        self.conv1 = ConvBlock(in_channels, 64)  # First convolution block
-        self.conv2 = ConvBlock(64, 128, pool=True)  # Second convolution block with pooling        
+        super().__init__()
+        self.conv1 = ConvBlock(in_channels, 64)
+        self.conv2 = ConvBlock(64, 128, pool=True)
         self.res1 = nn.Sequential(
             ConvBlock(128, 128),
             ConvBlock(128, 128)
-        )                
-        self.conv3 = ConvBlock(128, 256, pool=True)  # Third convolution block with pooling
-        self.conv4 = ConvBlock(256, 512, pool=True)  # Fourth convolution block with pooling                
+        )
+        self.conv3 = ConvBlock(128, 256, pool=True)
+        self.conv4 = ConvBlock(256, 512, pool=True)
         self.res2 = nn.Sequential(
             ConvBlock(512, 512),
             ConvBlock(512, 512)
-        )                
-        self.classifier = nn.Sequential(
-            nn.MaxPool2d(4),  # Max pooling to reduce feature map size
-            nn.Flatten(),     # Flatten the feature map for the linear layer
-            nn.Linear(512, num_diseases)  # Fully connected layer for classification
         )
-    def forward(self, x):      
+        self.classifier = nn.Sequential(
+            nn.MaxPool2d(4),
+            nn.Flatten(),
+            nn.Linear(512, num_diseases)
+        )
+    def forward(self, x):
         out = self.conv1(x)
-        out = self.conv2(out)                
-        out = self.res1(out) + out        
+        out = self.conv2(out)
+        out = self.res1(out) + out
         out = self.conv3(out)
-        out = self.conv4(out)            
-        out = self.res2(out) + out                
+        out = self.conv4(out)
+        out = self.res2(out) + out
         out = self.classifier(out)
         return out
-torch.serialization.add_safe_globals([CNN_NeuralNet])
 
+# Load model
 model = torch.load('/workspaces/project/DetectingPlantDiseases2.pth', map_location=torch.device('cpu'))
 model.eval()
 
-device="cpu"
+device = "cpu"
 def to_device(data, device):    
     if isinstance(data, (list,tuple)):
         return [to_device(x, device) for x in data]
@@ -93,38 +96,70 @@ def to_device(data, device):
 
 def preprocess_image(image):   
     transform = transforms.Compose([        
-        transforms.ToTensor(),  # Convert image to PyTorch tensor
-        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])  # Normalize
-    ])    
-    image = transform(image)        
-    image = image.unsqueeze(0) 
+        transforms.Resize((256, 256)),
+        transforms.ToTensor(),
+        transforms.Normalize([0.485, 0.456, 0.406], 
+                             [0.229, 0.224, 0.225])
+    ])
+    image = transform(image)
+    image = image.unsqueeze(0)
     return image
 
-def predict_image2(image, model):    
-    image = preprocess_image(image)        
-    xb = to_device(image, device)  
-    with torch.no_grad():
-        yb = model(xb)
-        _, preds = torch.max(yb, dim=1)    
-    return train.classes[preds.item()]
-
 def predict_image(image, model):    
-    image = preprocess_image(image)        
-    xb = to_device(image, device)  
+    image = preprocess_image(image)
+    xb = to_device(image, device)
     with torch.no_grad():
         yb = model(xb)
-        probs = F.softmax(yb, dim=1)  # Get probabilities
-        top_probs, top_classes = torch.topk(probs, k=2, dim=1)  # Get top 2 predictions
-    second_class = train.classes[top_classes.squeeze()[1].item()]  # Get the second class
+        probs = F.softmax(yb, dim=1)
+        top_probs, top_classes = torch.topk(probs, k=2, dim=1)
+    second_class = train.classes[top_classes.squeeze()[1].item()]
     return second_class
 
+# Weather Functionality
+def get_location():
+    g = geocoder.ip('me')
+    return g.latlng
 
+def get_weather(api_key):
+    latlon = get_location()
+    if latlon:
+        lat, lon = latlon
+        url = f"https://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid={api_key}&units=metric"
+        response = requests.get(url)
+        if response.status_code == 200:
+            weather_data = response.json()
+            return weather_data
+        else:
+            return None
+    else:
+        return None
 
-st.title('Plant Disease Detection')
-uploaded_file = st.file_uploader("Choose an image...", type="jpg")
+st.title('🌿 Plant Disease Detection')
+
+api_key = '9af0300668e7540757d4a871191f87b9' 
+weather = get_weather(api_key)
+
+if weather:
+    st.subheader('Current Weather')
+    col1, col2 = st.columns([1, 3])
+    with col1:
+        icon_code = weather['weather'][0]['icon']
+        icon_url = f"http://openweathermap.org/img/wn/{icon_code}@2x.png"
+        st.image(icon_url)
+    with col2:
+        st.markdown(f"**Location:** {weather['name']}")
+        st.markdown(f"**Temperature:** {weather['main']['temp']}°C")
+        st.markdown(f"**Weather:** {weather['weather'][0]['description'].title()}")
+        st.markdown(f"**Humidity:** {weather['main']['humidity']}%")
+        st.markdown(f"**Wind Speed:** {weather['wind']['speed']} m/s")
+else:
+    st.write("Weather data is not available.")
+
+st.subheader('Plant Disease Detection')
+uploaded_file = st.file_uploader("Upload a plant leaf image...", type=["jpg", "jpeg", "png"])
 
 if uploaded_file is not None:
     image = Image.open(uploaded_file)
-    st.image(image, caption='Uploaded Image.', use_column_width=True)        
-    prediction = predict_image(image, model)   
-    st.write(f'Predicted class: {prediction}')
+    st.image(image, caption='Uploaded Image', use_column_width=True)
+    prediction = predict_image(image, model)
+    st.write(f'**Predicted Disease Class:** {prediction}')
