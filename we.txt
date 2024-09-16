@@ -25,3 +25,6 @@ if weather:
     print(f"Weather: {weather['weather'][0]['description']}")
 else:
     print("Failed to retrieve weather data.")
+
+
+what is effect of weather on the predicted diesease for plant, and give its prevention and cure.

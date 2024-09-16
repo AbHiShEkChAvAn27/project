@@ -8,9 +8,10 @@ from torchvision.datasets import ImageFolder
 import torchvision.transforms as transforms 
 import requests
 import geocoder
+import openai  # OpenAI API integration
 
 # Plant Disease Detection Setup
-train_path = "/workspaces/project/New Plant Diseases Dataset(Augmented)/New Plant Diseases Dataset(Augmented)/train"
+train_path="/workspaces/project/New Plant Diseases Dataset(Augmented)/New Plant Diseases Dataset(Augmented)/train"
 train = ImageFolder(train_path, transform=transforms.ToTensor())
 
 def accuracy(outputs, labels):    
@@ -41,8 +42,7 @@ class ImageClassificationBase(nn.Module):
         return {'val_loss': epoch_loss.item(), 'val_acc': epoch_acc.item()}
 
     def epoch_end(self, epoch, result):
-        print(f"Epoch [{epoch}], train_loss: {result['train_loss']:.4f}, "
-              f"val_loss: {result['val_loss']:.4f}, val_acc: {result['val_acc']:.4f}")
+        print(f"Epoch [{epoch}], train_loss: {result['train_loss']:.4f}, val_loss: {result['val_loss']:.4f}, val_acc: {result['val_acc']:.4f}")
 
 def ConvBlock(in_channels, out_channels, pool=False):        
     layers = [
@@ -96,10 +96,8 @@ def to_device(data, device):
 
 def preprocess_image(image):   
     transform = transforms.Compose([        
-        transforms.Resize((256, 256)),
         transforms.ToTensor(),
-        transforms.Normalize([0.485, 0.456, 0.406], 
-                             [0.229, 0.224, 0.225])
+        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
     ])
     image = transform(image)
     image = image.unsqueeze(0)
@@ -118,48 +116,61 @@ def predict_image(image, model):
 # Weather Functionality
 def get_location():
     g = geocoder.ip('me')
+    if not g.latlng:  # Fallback if location is not found
+        st.warning("Geolocation failed, using default location (Pimpri-Chinchwad).")
+        return [18.6298, 73.7997]  # Pimpri-Chinchwad coordinates
     return g.latlng
 
 def get_weather(api_key):
-    latlon = get_location()
-    if latlon:
-        lat, lon = latlon
-        url = f"https://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid={api_key}&units=metric"
-        response = requests.get(url)
-        if response.status_code == 200:
-            weather_data = response.json()
-            return weather_data
-        else:
-            return None
+    lat, lon = get_location()
+    url = f"https://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid={api_key}&units=metric"
+    response = requests.get(url)
+    if response.status_code == 200:
+        weather_data = response.json()
+        return weather_data
     else:
+        st.error("Failed to retrieve weather information.")
         return None
 
-st.title('🌿 Plant Disease Detection')
 
-api_key = '9af0300668e7540757d4a871191f87b9' 
+openai.api_key = "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" 
+
+def get_openai_response(predicted_disease, weather,wds):
+    prompt = f"What is the effect of {weather} and {wds} on {predicted_disease} for a plant? Also provide its prevention and cure."
+    try:
+        response = openai.Completion.create(
+            engine="text-davinci-003",
+            prompt=prompt,
+            max_tokens=150
+        )
+        return response.choices[0].text.strip()
+    except Exception as e:
+        return f"Error generating response: {str(e)}"
+
+
+st.title('🌿 Plant Disease Detection and Weather effects')
+
+api_key = '9af0300668e7540757d4a871191f87b9'  
 weather = get_weather(api_key)
 
 if weather:
-    st.subheader('Current Weather')
-    col1, col2 = st.columns([1, 3])
-    with col1:
-        icon_code = weather['weather'][0]['icon']
-        icon_url = f"http://openweathermap.org/img/wn/{icon_code}@2x.png"
-        st.image(icon_url)
-    with col2:
-        st.markdown(f"**Location:** {weather['name']}")
-        st.markdown(f"**Temperature:** {weather['main']['temp']}°C")
-        st.markdown(f"**Weather:** {weather['weather'][0]['description'].title()}")
-        st.markdown(f"**Humidity:** {weather['main']['humidity']}%")
-        st.markdown(f"**Wind Speed:** {weather['wind']['speed']} m/s")
-else:
-    st.write("Weather data is not available.")
+    st.subheader("☀️ Current Weather Information")
+    st.write(f"**Location:** {weather['name']}")
+    st.write(f"**Temperature:** {weather['main']['temp']}°C")
+    st.write(f"**Weather:** {weather['weather'][0]['description'].capitalize()}")
 
-st.subheader('Plant Disease Detection')
-uploaded_file = st.file_uploader("Upload a plant leaf image...", type=["jpg", "jpeg", "png"])
+# File uploader for plant disease detection
+st.subheader("🖼️ Upload Plant Image for Disease Detection")
+uploaded_file = st.file_uploader("Choose an image...", type="jpg")
 
 if uploaded_file is not None:
     image = Image.open(uploaded_file)
-    st.image(image, caption='Uploaded Image', use_column_width=True)
+    st.image(image, caption='Uploaded Image.', use_column_width=True)
     prediction = predict_image(image, model)
-    st.write(f'**Predicted Disease Class:** {prediction}')
+    we = weather['main']['temp']
+    wdse = weather['weather'][0]['description']
+    st.subheader(f'🌿 Predicted Disease: {prediction}')        
+    if weather:
+        openai_response = get_openai_response(prediction, we,wdse)
+        st.subheader("🌦️ Effect of Weather on Disease and Prevention")
+        st.write(openai_response)
