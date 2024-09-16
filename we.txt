@@ -28,3 +28,5 @@ else:
 
 
 what is effect of weather on the predicted diesease for plant, and give its prevention and cure.
+
+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

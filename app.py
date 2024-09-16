@@ -10,7 +10,6 @@ import requests
 import geocoder
 import openai  # OpenAI API integration
 
-# Plant Disease Detection Setup
 train_path="/workspaces/project/New Plant Diseases Dataset(Augmented)/New Plant Diseases Dataset(Augmented)/train"
 train = ImageFolder(train_path, transform=transforms.ToTensor())
 
@@ -113,12 +112,11 @@ def predict_image(image, model):
     second_class = train.classes[top_classes.squeeze()[1].item()]
     return second_class
 
-# Weather Functionality
 def get_location():
     g = geocoder.ip('me')
-    if not g.latlng:  # Fallback if location is not found
+    if not g.latlng:  
         st.warning("Geolocation failed, using default location (Pimpri-Chinchwad).")
-        return [18.6298, 73.7997]  # Pimpri-Chinchwad coordinates
+        return [18.6298, 73.7997]
     return g.latlng
 
 def get_weather(api_key):
@@ -132,23 +130,23 @@ def get_weather(api_key):
         st.error("Failed to retrieve weather information.")
         return None
 
+openai.api_key = "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"  
 
-openai.api_key = "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" 
-
-def get_openai_response(predicted_disease, weather,wds):
-    prompt = f"What is the effect of {weather} and {wds} on {predicted_disease} for a plant? Also provide its prevention and cure."
+def get_openai_response(predicted_disease, weather, wsd):
+    prompt = f"What is the effect of {weather} and {wsd} on {predicted_disease} for a plant? Also provide its prevention and cure."    
     try:
-        response = openai.Completion.create(
-            engine="text-davinci-003",
-            prompt=prompt,
-            max_tokens=150
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "You are an expert in plant diseases and weather effects."},
+                {"role": "user", "content": prompt}
+            ]
         )
-        return response.choices[0].text.strip()
+        return response['choices'][0]['message']['content'].strip()
     except Exception as e:
         return f"Error generating response: {str(e)}"
 
-
-st.title('🌿 Plant Disease Detection and Weather effects')
+st.title('🌿 Plant Disease Detection and Weather Info')
 
 api_key = '9af0300668e7540757d4a871191f87b9'  
 weather = get_weather(api_key)
@@ -159,7 +157,6 @@ if weather:
     st.write(f"**Temperature:** {weather['main']['temp']}°C")
     st.write(f"**Weather:** {weather['weather'][0]['description'].capitalize()}")
 
-# File uploader for plant disease detection
 st.subheader("🖼️ Upload Plant Image for Disease Detection")
 uploaded_file = st.file_uploader("Choose an image...", type="jpg")
 
@@ -171,6 +168,6 @@ if uploaded_file is not None:
     wdse = weather['weather'][0]['description']
     st.subheader(f'🌿 Predicted Disease: {prediction}')        
     if weather:
-        openai_response = get_openai_response(prediction, we,wdse)
+        openai_response = get_openai_response(prediction, weather)
         st.subheader("🌦️ Effect of Weather on Disease and Prevention")
         st.write(openai_response)
