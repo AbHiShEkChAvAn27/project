@@ -8,8 +8,12 @@ from torchvision.datasets import ImageFolder
 import torchvision.transforms as transforms 
 import requests
 import geocoder
-import openai  # OpenAI API integration
+import google.generativeai as genai
+import os
 
+genai.configure(api_key="AIzaSyB4ZcIWZ0tiDwmgmuquF8HdzcIgmhugQQ8")
+
+# Plant Disease Detection Setup
 train_path="/workspaces/project/New Plant Diseases Dataset(Augmented)/New Plant Diseases Dataset(Augmented)/train"
 train = ImageFolder(train_path, transform=transforms.ToTensor())
 
@@ -114,9 +118,9 @@ def predict_image(image, model):
 
 def get_location():
     g = geocoder.ip('me')
-    if not g.latlng:  
+    if not g.latlng:  # Fallback if location is not found
         st.warning("Geolocation failed, using default location (Pimpri-Chinchwad).")
-        return [18.6298, 73.7997]
+        return [18.6298, 73.7997]  # Pimpri-Chinchwad coordinates
     return g.latlng
 
 def get_weather(api_key):
@@ -130,24 +134,7 @@ def get_weather(api_key):
         st.error("Failed to retrieve weather information.")
         return None
 
-openai.api_key = "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"  
-
-def get_openai_response(predicted_disease, weather, wsd):
-    prompt = f"What is the effect of {weather} and {wsd} on {predicted_disease} for a plant? Also provide its prevention and cure."    
-    try:
-        response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": "You are an expert in plant diseases and weather effects."},
-                {"role": "user", "content": prompt}
-            ]
-        )
-        return response['choices'][0]['message']['content'].strip()
-    except Exception as e:
-        return f"Error generating response: {str(e)}"
-
 st.title('🌿 Plant Disease Detection and Weather Info')
-
 api_key = '9af0300668e7540757d4a871191f87b9'  
 weather = get_weather(api_key)
 
@@ -160,14 +147,21 @@ if weather:
 st.subheader("🖼️ Upload Plant Image for Disease Detection")
 uploaded_file = st.file_uploader("Choose an image...", type="jpg")
 
+def get_response(pre,we,wd):
+    modelg = genai.GenerativeModel("gemini-1.5-flash")
+    texts=f"what is effect of temperature {we} C and {wd} on the {pre} diesease for plant, and give its prevention and cure."
+    response = modelg.generate_content(texts)
+    return response.text
+
 if uploaded_file is not None:
     image = Image.open(uploaded_file)
     st.image(image, caption='Uploaded Image.', use_column_width=True)
     prediction = predict_image(image, model)
     we = weather['main']['temp']
     wdse = weather['weather'][0]['description']
-    st.subheader(f'🌿 Predicted Disease: {prediction}')        
+    st.subheader(f'🌿 Predicted Disease: {prediction}')
+    
     if weather:
-        openai_response = get_openai_response(prediction, weather)
+        oresponse = get_response(prediction, we,wdse)
         st.subheader("🌦️ Effect of Weather on Disease and Prevention")
-        st.write(openai_response)
+        st.write(oresponse)
