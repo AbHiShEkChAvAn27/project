@@ -33,7 +33,7 @@ languages = {
 selected_language = st.sidebar.selectbox("Select Language", languages.keys())
 language_code = languages[selected_language]
 
-genai.configure(api_key="AIzaSyB4ZcIWZ0tiDwmgmuquF8HdzcIgmhugQQ8")
+genai.configure(api_key="xyz")
 
 train_path="/workspaces/project/New Plant Diseases Dataset(Augmented)/New Plant Diseases Dataset(Augmented)/train"
 train = ImageFolder(train_path, transform=transforms.ToTensor())
@@ -155,7 +155,7 @@ def get_weather(api_key):
         return None
 
 st.title(translate_text('🌿 Plant Disease Detection and Weather Info', language_code))
-api_key = '9af0300668e7540757d4a871191f87b9'  
+api_key = 'xyz'  
 weather = get_weather(api_key)
 
 if weather:
