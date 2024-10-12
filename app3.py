@@ -37,7 +37,7 @@ languages = {
 
 selected_language = st.sidebar.selectbox("Select Language", languages.keys())
 language_code = languages[selected_language]
-genai.configure(api_key="AIzaSyB4ZcIWZ0tiDwmgmuquF8HdzcIgmhugQQ8")
+genai.configure(api_key="abc")
 
 def accuracy(outputs, labels):    
     _, preds = torch.max(outputs, dim=1)        
@@ -158,7 +158,7 @@ def get_weather(api_key):
         return None
 
 st.title(translate_text('🌿 Plant Disease Detection and Weather Info', language_code))
-api_key = '9af0300668e7540757d4a871191f87b9'  
+api_key = 'abc'  
 weather = get_weather(api_key)
 
 if weather:
