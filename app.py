@@ -135,7 +135,7 @@ def get_weather(api_key):
         return None
 
 st.title('🌿 Plant Disease Detection and Weather Info')
-api_key = '9af0300668e7540757d4a871191f87b9'  
+api_key = 'xyz'  
 weather = get_weather(api_key)
 
 if weather:
