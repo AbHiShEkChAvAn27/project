@@ -6,10 +6,10 @@ import cv2
 
 import numpy as np
 
-face_classifier = cv2.CascadeClassifier('pretrained_haarcascade_classifier/haarcascade_frontalface_default.xml')
-emotion_model = load_model('models/emotion_detection_model_50epochs.h5')
-age_model = load_model('models/age_model_3epochs.h5')
-gender_model = load_model('models/gender_model_3epochs.h5')
+face_classifier = cv2.CascadeClassifier('/workspaces/project/face/haarcascade_frontalface_default.xml')
+emotion_model = load_model('/workspaces/project/face/emotion_detection_model_50epochs.h5')
+age_model = load_model('/workspaces/project/face/age_model_3epochs.h5')
+gender_model = load_model('/workspaces/project/face/gender_model_3epochs.h5')
 
 class_labels = ['Angry', 'Disgust', 'Fear', 'Happy', 'Neutral', 'Sad', 'Surprise']
 gender_labels = ['Male', 'Female']
